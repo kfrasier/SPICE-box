@@ -5,8 +5,11 @@ function dt_LR_batch(fullLabels,fullFiles,p)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-N = size(fullFiles,2);
+N = size(fullFiles,1);
 previousFs = 0; % make sure we build filters on first pass
+
+% get file type list
+fTypes = io_getFileType(detFiles);
 
 for idx = 1:N  % "parfor" works here, parallellizing the process across as
     % many cores as your machine has available.
@@ -19,41 +22,39 @@ for idx = 1:N  % "parfor" works here, parallellizing the process across as
     
     % Pull in a file to examine
     currentRecFile = fullFiles{idx};
-    [~,strippedName,fType1] = fileparts(currentRecFile);
-    [~,~,fType2] = fileparts(strippedName);
-    fType = [fType2,fType1];
+    hdr = io_readXWAVHeader(currentRecFile,p,'fType',fTypes(idx));
+    
+    if isempty(hdr)
+        warning(fprintf('No header info returned for file %s',...
+            currentRecFile));
+        disp('Moving on to next file')
+        continue
+    end
+    
     % Read the file header info
-    if strncmpi(fType,'.wav',4)
-        hdr = io_readWavHeader(currentRecFile, p.DateRegExp);
-        % divide wav into smaller bits for processing ease
+    if fTypes(idx) == 1 
         [startsSec,stopsSec,p] = dt_LR_chooseSegments(p,hdr);
-    elseif strcmp(fType,'.x.wav')
-        hdr = io_readXWAVHeader(currentRecFile,p);
-        if ~isempty(hdr)
-            % divide xwav by raw file
-            [startsSec,stopsSec] = dt_chooseSegmentsRaw(hdr);
-        else
-            continue
-        end
+    else
+        % divide xwav by raw file
+        [startsSec,stopsSec] = dt_chooseSegmentsRaw(hdr);
     end    
 
-   
-    % Build a band pass filter on first pass or if sample rate has changed
+    % Build a bandpass filter on first pass or if sample rate has changed
     if hdr.fs ~= previousFs
         [previousFs,p] = fn_buildFilters(p,hdr.fs);
+        
         % also need to compute an amplitude threshold cutoff in counts
         % keep it conservative for now by using the transfer function
         % maximum across the band of interest
         p = fn_interp_tf(p);
         if ~exist('p.countThresh') || isempty(p.countThresh)
-            p.countThresh =  (10^((p.dBppThreshold - p.xfrOffset(1))/20))*(1/2);
-           
+            p.countThresh = (10^((p.dBppThreshold - median(p.xfrOffset))/20))/2;
         end
     end
     
     % Open audio file
     fid = fopen(currentRecFile, 'r');
-    
+    buffSamples = p.LRbuffer*hdr.fs;
     % Loop through search area, running short term detectors
     for k = 1:length(startsSec)
         % Select iteration start and end
@@ -62,7 +63,7 @@ for idx = 1:N  % "parfor" works here, parallellizing the process across as
         
         % Read in data segment
         if strncmp(fType,'.wav',4)
-            data = io_ReadWav(fid, hdr, startK, stopK, 'Units', 's',...
+            data = io_readWav(fid, hdr, startK, stopK, 'Units', 's',...
                 'Channels', p.channel, 'Normalize', 'unscaled')';
         else
             data = io_readRaw(fid, hdr, k, p.channel);
@@ -80,24 +81,24 @@ for idx = 1:N  % "parfor" works here, parallellizing the process across as
         energy = filtData.^2;
         
         % Flag times when the amplitude rises above a threshold
-        spotsOfInt = find(energy>((p.countThresh^2)));        
+        aboveThreshold = find(energy>((p.countThresh^2)));        
         
-        buffSamples = p.LRbuffer*hdr.fs;
-        detStart = max((((spotsOfInt - buffSamples)/hdr.fs)+startK),startK);
-        detStop = min((((spotsOfInt + buffSamples)/hdr.fs)+startK),stopK);
+        % add a buffer on either side of detections.
+        detStart = max((((aboveThreshold - buffSamples)/hdr.fs) + startK), startK);
+        detStop = min((((aboveThreshold + buffSamples)/hdr.fs) + startK), stopK);
         
         % Merge flags that are close together.
         if length(detStart)>1
-            [stopsM,startsM] = dt_mergeCandidates(buffSamples/hdr.fs,detStop',detStart');
+            [stopsM,startsM] = dt_mergeCandidates(buffSamples/hdr.fs,...
+                detStop', detStart');
         else
             startsM = detStart;
             stopsM = detStop;
         end
         
         % Add current detections to overall detection vector
-        % detections = [detections; signalBins];
         if ~isempty(startsM)
-            detections = [detections;[startsM,stopsM]];
+            detections = [detections; [startsM,stopsM]];
         end
     end
     

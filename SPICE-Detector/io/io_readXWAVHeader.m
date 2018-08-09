@@ -30,7 +30,7 @@ end
 
 if ftype == 1       % do the following for wav files
 
-    hdr = io_readWavHeader(Filename, PARAMS);
+    hdr = io_readWavHeader(Filename, p.DateRegExp);
 
 elseif ftype == 2               % do the following for xwavs
     fid = fopen(Filename,'r');

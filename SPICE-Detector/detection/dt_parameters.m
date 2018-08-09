@@ -21,6 +21,7 @@ function [clickDets,f] = dt_parameters(noiseIn,...
 N = length(p.fftWindow);
 f = 0:((hdr.fs/2)/1000)/((N/2)):((hdr.fs/2)/1000);
 f = f(p.specRange);
+sub = 10*log10(hdr.fs/N);
 
 ppSignal = zeros(size(clicks,1),1);
 durClick =  zeros(size(clicks,1),1);
@@ -34,19 +35,28 @@ envDurLim = ceil(p.delphClickDurLims.*(hdr.fs/1e6));
 nDur = zeros(size(clicks,1),1);
 deltaEnv = zeros(size(clicks,1),1);
 
-
 if p.saveNoise
-	specNoiseTf = zeros(size(clicks,1),length(f));
-	yNFilt = [];   
-    % concatonnate vector of noise
-    for itr = 1:min([30,size(noiseIn,1)])
-        nStart = noiseIn(itr,1);
-        nEnd = min([noiseIn(itr,2),nStart+580]);
-        yNFilt = [yNFilt,filteredData(nStart:nEnd)];
+    
+    if ~isempty(noiseIn)
+        yNFilt = filteredData(noiseIn(1):noiseIn(2));
+    
+    noiseWLen = length(yNFilt);
+    noiseWin = hann(noiseWLen);
+    wNoise = zeros(1,N);
+    wNoise(1:noiseWLen) = noiseWin.*yNFilt';
+    spNoise = 20*log10(abs(fft(wNoise,N)));
+    spNoiseSub = spNoise-sub;
+    spNoiseSub = spNoiseSub(:,1:N/2);
+    specNoiseTf = spNoiseSub(p.specRange)+p.xfrOffset;
+    else
+        yNFilt = [];
+        specNoiseTf = [];
     end
 end
 
-buffVal = hdr.fs*.00025; % Add small buffer, here, I want .25 ms, so computing how many samples to use.
+% Add small buffer to edges of clicks
+buffVal = hdr.fs * p.HRbuffer; 
+
 for c = 1:size(clicks,1)
     % Pull out band passed click timeseries
     yFiltBuff{c} = filteredData(max(clicks(c,1)-buffVal,1):min(clicks(c,2)+buffVal,size(filteredData,2)));
@@ -54,9 +64,6 @@ for c = 1:size(clicks,1)
     
     click = yFilt{c};
     clickBuff = yFiltBuff{c};
-    if p.saveNoise
-        noise = yNFilt;
-    end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Calculate duration in samples
@@ -70,31 +77,17 @@ for c = 1:size(clicks,1)
     spClick = 20*log10(abs(fft(wClick,N)));
     
     % account for bin width
-    sub = 10*log10(hdr.fs/N);
     spClickSub = spClick-sub;
     
     %reduce data to first half of spectra
     spClickSub = spClickSub(:,1:N/2);
     specClickTf(c,:) = spClickSub(p.specRange)+p.xfrOffset;
-
-    if p.saveNoise
-        % Compute noise spectrum
-        noiseWLen = length(noise);
-        noiseWin = hann(noiseWLen);
-        wNoise = zeros(1,N);
-        wNoise(1:noiseWLen) = noiseWin.*noise';
-        spNoise = 20*log10(abs(fft(wNoise,N)));
-        spNoiseSub = spNoise-sub;
-        spNoiseSub = spNoiseSub(:,1:N/2);   
-        specNoiseTf(c,:) = spNoiseSub(p.specRange)+p.xfrOffset;
-
-    end
     
     %%%%%
     % calculate peak click frequency
     % max value in the first half samples of the spectrogram
     
-    [valMx, posMx] = max(specClickTf(c,:)); 
+    [valMx, posMx] = max(specClickTf(c,:));
     peakFr(c) = f(posMx); %peak frequency in kHz
     
     %%%%%%%%%%%%%%%%%
@@ -129,8 +122,8 @@ for c = 1:size(clicks,1)
         end
     end
     
-    %find the first value above threshold with positive slope and find
-    %the last above with negative slope
+    % find the first value above threshold with positive slope and find
+    % the last above with negative slope
     lowIdx = aboveThr(find(direction,1,'first'));
     negative = find(direction==-1);
     if isempty(negative)
@@ -141,21 +134,22 @@ for c = 1:size(clicks,1)
     nDur(c,1) = highIdx - lowIdx + 1;
     
     %compare maximum first half of points with second half.
-    halves = ceil(nDur(c,1)/2);   
+    halves = ceil(nDur(c,1)/2);
     env1max = max(env(lowIdx:min([lowIdx+halves,length(env)])));
     env2max = max(env(min([lowIdx+(halves)+1,length(env)]):end));
     deltaEnv(c,1) = env1max-env2max;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    %calculate bandwidth
-    %-3dB bandwidth
-    %calculation of -3dB bandwidth - amplitude associated with the halfpower points of a pressure pulse (see Au 1993, p.118);
-    low = valMx-3; %p1/2power = 10log(p^2max/2) = 20log(pmax)-3dB = 0.707*pmax; 1/10^(3/20)=0.707
+    % calculate bandwidth
+    % -3dB bandwidth
+    % calculation of -3dB bandwidth - amplitude associated with the halfpower points of a pressure pulse (see Au 1993, p.118);
+    low = valMx-3; % p1/2power = 10log(p^2max/2) = 20log(pmax)-3dB = 0.707*pmax; 1/10^(3/20)=0.707
     %walk along spectrogram until low is reached on either side
-    slopeup=fliplr(specClickTf(c,1:posMx));
-    slopedown=specClickTf(c,posMx:round(length(specClickTf(c,:))));
-    for e3dB=1:length(slopeup)
+    slopeup = fliplr(specClickTf(c,1:posMx));
+    slopedown = specClickTf(c,posMx:round(length(specClickTf(c,:))));
+    
+    for e3dB = 1:length(slopeup)
         if slopeup(e3dB)<low %stop at value < -3dB: point of lowest frequency
             break
         end
@@ -200,21 +194,21 @@ validClicks = ones(size(ppSignal));
 % Check parameter values for each click
 for idx = 1:length(ppSignal)
     tfVec = [deltaEnv(idx) < p.dEvLims(1);...
-             peakFr(idx) < p.cutPeakBelowKHz;...
-             peakFr(idx) > p.cutPeakAboveKHz;...
-             nDur(idx)>  (envDurLim(2));...
-             nDur(idx)<  (envDurLim(1));
-             durClick(idx) < p.delphClickDurLims(1);
-             durClick(idx) > p.delphClickDurLims(2)];%...
-%             bw3db(idx,3) < p.bw3dbMin];
-%          plot(yFiltBuff{idx})
-%          title(sum(tfVec))
+        peakFr(idx) < p.cutPeakBelowKHz;...
+        peakFr(idx) > p.cutPeakAboveKHz;...
+        nDur(idx)>  (envDurLim(2));...
+        nDur(idx)<  (envDurLim(1));
+        durClick(idx) < p.delphClickDurLims(1);
+        durClick(idx) > p.delphClickDurLims(2)];%...
+    %          bw3db(idx,3) < p.bw3dbMin];
+    %          plot(yFiltBuff{idx})
+    %          title(sum(tfVec))
     if ppSignal(idx)< p.dBppThreshold
-        validClicks(idx) = 0; 
-    elseif sum(tfVec)>0   
-        validClicks(idx) = 0; 
-    %else
-    %    1;
+        validClicks(idx) = 0;
+    elseif sum(tfVec)>0
+        validClicks(idx) = 0;
+        %else
+        %    1;
     end
     
 end
@@ -234,6 +228,6 @@ clickDets.deltaEnv = deltaEnv(clickInd,:);
 clickDets.nDur = nDur(clickInd,:);
 
 if p.saveNoise
-    clickDets.specNoiseTf = specNoiseTf(clickInd,:);
+    clickDets.specNoiseTf = specNoiseTf;
     clickDets.yNFilt = {yNFilt};
 end

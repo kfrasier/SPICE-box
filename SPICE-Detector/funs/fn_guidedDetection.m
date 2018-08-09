@@ -1,4 +1,4 @@
-function [xwavNames,matlabDates] = fn_guidedDetection(detFiles,gDxls)
+function [xwavNames,matlabDates] = fn_guidedDetection(detFiles,p)
 % Use to increase efficiency and accuracy by only running detector over 
 % xwav files spanned by a previously defined "detection", requires .xls
 % input file, with start/end times of encounters formatted as numbers.
@@ -8,65 +8,74 @@ function [xwavNames,matlabDates] = fn_guidedDetection(detFiles,gDxls)
 % you must format your Excel dates/times as NUMBERS, not dates
 
 % read the file into 3 matrices-- numeric, text, and raw cell array
-[num, ~, ~] = xlsread(gDxls);
+sprintf('Loading guided detection file %s\n',p.gDxls)
+[gDNum,gDTxt,~]  = xlsread(p.gDxls);
 
-% error check 
-[~,y] = size(num);
-if y < 2 %start and end dates not formatted as numbers
-    error('Dates in guided detection spreadsheet must be saved in NUMBER format');
-end  
-
-excelDates = num(:,1:2); % numeric array contains datenums
-
-% convert excel datenums to matlab datenums (different pivot year)
-matlabDates = ones(size(excelDates)).*datenum('30-Dec-1899') ...
+% figure out what kind of dates have been handed in
+if size(gDNum,2)>= 2 
+    %start and end dates are formatted as numbers
+    disp('Assuming guided detection times are in excel datenum format')
+    excelDates = gDNum(:,1:2);
+    
+    % convert excel datenums to matlab datenums (different pivot year)
+    matlabDates = ones(size(excelDates)).*datenum('30-Dec-1899') ...
     + excelDates; % x2mdate does this, but requires financial toolbox
+
+elseif size(gDTxt,2)>= 2
+    %start and end dates are formatted as text
+    disp('No number columns found')
+    disp('Assuming guided detection times are in MM/DD/YYYY hh:mm:ss format')
+    matlabDates = [datenum(gDTxt(2:end,1)),datenum(gDTxt(2:end,2))];
+    
+end  
 
 % read xwav headers to determine start of each xwav file
 startFile = ones(size(detFiles,1),1);
-yr2000 = datenum([2000,00,00]);
-fprintf('Reading xwav headers to identify files for guided detection. This may take awhile.\n')
+endFile = ones(size(detFiles,1),1);
+
+fprintf('Reading audio file headers to identify files for guided detection. This may take awhile.\n')
+
+% get file type list
+fTypes = io_getFileType(detFiles);
+
 for m = 1:size(detFiles,1)
-    thisXwav = detFiles(m,:);
-    fileHead = io_readXWAVHeader(thisXwav);
-    startFile(m,1) = fileHead.start.dnum + yr2000;
-    endFile(m,1) = fileHead.end.dnum + yr2000;
+    thisXwav = detFiles{m};   
+    fileHead = io_readXWAVHeader(thisXwav,p,'ftype',fTypes(m));
+    startFile(m,1) = fileHead.start.dnum;
+    endFile(m,1) = fileHead.end.dnum;
 end
-fprintf('Done reading xwav headers.\n')
+fprintf('Done reading audio file headers.\n')
 
-% in case files are not ordered by time for some reason:
-[startFileSort, rIDX] = sortrows(startFile);
-endFileSort = endFile(rIDX,:);
-detFilesSort = detFiles(rIDX,:); % make a sorted list of file names 
-
-detXwavNames = []; % holder for names of files to process
+detXwavIdxAll= zeros(size(startFile)); % holder for names of files to process
 
 %take each detection, check which xwav files are associated with the detection
-for i = 1:size(matlabDates,1)   %%%%%%%% problems with this logic.
+for iM = 1:size(matlabDates,1)   %%%%%%%% problems with this logic.
     % find which xwav file(s) correspond(s) with manual detection start 
-    thisBoutStart = matlabDates(i,1);
-    thisBoutEnd = matlabDates(i,2);
+    thisBoutStart = matlabDates(iM,1);
+    thisBoutEnd = matlabDates(iM,2);
 
-    % find the xwav file that starts before this bout.
-    startIdx = find(startFileSort < thisBoutStart,1,'last');
-    % if there is none, find the earliest file that matches. If the bout
-    % start before recording starts, this could happen.
-    if isempty(startIdx)
-        startIdx = find(startFileSort > thisBoutStart,1,'first');
-    end
+    % find files that have data in this bout:
+    % case 1: file starts before bout start and ends after bout start
+    case1 = find(startFile <= thisBoutStart & endFile >= thisBoutStart);
     
-    endIdx = find(endFileSort > thisBoutEnd,1,'first');
-    if isempty(startIdx)
-        startIdx = find(endFileSort < thisBoutEnd,1,'last');
-    end
+    % case 2: file starts before bout end and ends after bout end
+    case2 = find(startFile <= thisBoutEnd & endFile >= thisBoutEnd);
     
-    if isempty([startIdx, endIdx])
-        fprintf('No Recordings during defined detection time #%d \n', i);
+    % case 3: file starts after bout start and ends before bout end
+    case3 =  find(startFile >= thisBoutStart & endFile <= thisBoutEnd);
+    
+    % case 4: file starts before bout start and ends after bout end
+    case4 =  find(startFile <= thisBoutStart & endFile >= thisBoutEnd);
+    
+    detXwavIdx = unique([case1;case2;case3;case4]);
+    
+    if isempty(detXwavIdx)
+        fprintf('No Recordings during defined detection time period #%d \n', iM);
     else 
-        fIdx = startIdx:endIdx; %combine all indices of files associate with this detection
-        fIdx = unique(fIdx);        
-        detXwavNames = [detXwavNames; detFilesSort(fIdx,:)];
+        fprintf('Found %0.0f files matching detection time period #%d \n',...
+            size(detXwavIdx,1), iM);
+        detXwavIdxAll(detXwavIdx) = 1;
     end
 end
 
-xwavNames = unique(detXwavNames,'rows');
+xwavNames = detFiles(detXwavIdxAll==1);

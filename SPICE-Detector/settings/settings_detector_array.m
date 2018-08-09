@@ -6,27 +6,29 @@
 detParams.lowResDet = false; % run low resolution detector.
 detParams.highResDet = true; % run high resolution detector.
 
+% Control amount of messaging displayed in console.
+
+detParams.verbose = true;
 % Location of base directory containing directories of files to be analyzed
-detParams.baseDir = 'F:\';
+detParams.baseDir = 'H:\Clymenedolphin\Recording_system_1_High_Frequency\Recordings\Oil_End_Array_HP2_HP4_HIGH_FREQ';
 
 % Optional output directory location. Metadata directory will be created in 
 % outDir if specified, otherwise it will be created in baseDir.
 detParams.outDir  = 'E:\test'; 
 
 % Set transfer function location
-detParams.tfFullFile = 'E:\Code\TFs\683_120919\683_120919_HARP.tf';
+detParams.tfFullFile = [];
 % Note, if no transfer function use: parametersLR.tfFullFile = [];
 
 % Name of the deployment. This should be the first few characters in the 
 % directory(ies) you want to look in you want to look at. For now, 
 % directory hierarchy is expected to be: basedir>depl*>*.x.wav
-% TODO: implement recursive directory search for more flexibility.
-detParams.depl = 'GofMX_DC08';
+detParams.depl = 'Scl';
 
 detParams.channel = 1; % which channel do you want to look at?
 detParams.bpRanges = [5000 100000]; % Bandpass filter parameters in Hz [min,max]
 detParams.filterOrder = 5; % butterworth filter order used for band pass
-detParams.dBppThreshold = 118; % minimum amplitude threshold in dB. 
+detParams.dBppThreshold = 50; % minimum amplitude threshold in dB. 
 detParams.frameLengthUs = 2000; % For fft computation
 detParams.overlap = 0.50; % fft overlap
 detParams.clipThreshold = 0.98;%  Normalized clipping threshold btwn 0 and 1.  If empty, 
@@ -49,10 +51,9 @@ detParams.DateRegExp = '_(\d*)_(\d*)';
 %         parametersST.DateRE = '(\d{4})-\d{2}(\d{4})-(\d{6})';
 
 %%%%% GUIDED DETECTIONS? %%%%
-detParams.guidedDetector = false; % flag to 1 if guided
+detParams.guidedDetector = true; % flag to 1 if guided
 % Name of spreadsheet containing target detection times. Required if guidedDetector = true
-% parametersLR.gDxls = 'E:\Data\John Reports\DCLDEdata\WAT_NC_guidedDets.xlsx';
-detParams.gDxls = [];
+detParams.gDxls = 'E:\Code\SPICE-box\SPICE-Detector\settings\guidedDets_example.csv';
 detParams.diary = false; % set to true if you want a diary output. Warning: text file can get large
 
 %%%%%%%%%%%%%%%%%% Low resolution only settings %%%%%%%%%%%%%%%%
@@ -70,7 +71,7 @@ detParams.dEvLims = [-.5,.9];  % [min,max] Envelope energy distribution comparin
 detParams.HRbuffer = 0.00025; % # of seconds to add on either side of area of interest
 detParams.delphClickDurLims = [30,1200];% [min,max] duration in microsec 
 % allowed for high energy envelope of click
-detParams.cutPeakBelowKHz = 5; % discard click if peak frequency below X kHz
+detParams.cutPeakBelowKHz = 10; % discard click if peak frequency below X kHz
 detParams.cutPeakAboveKHz = 100; % discard click if peak frequency above Y kHz 
 detParams.minClick_us = 16;% Minimum duration of a click in us 
 detParams.maxClick_us = 1500; % Max duration of a click including echos
@@ -95,7 +96,7 @@ detParams.rmEchos = false;
 detParams.lockOut = 0.01; % min gap between clicks in seconds, only used if rmEchos=TRUE
 
 %%% Saving options %%%
-detParams.saveNoise = 0; % Make 1 if you want to save noise samples with each click. 
+detParams.saveNoise = 1; % Make 1 if you want to save noise samples with each click. 
 % Beware: this can make big files if you have a lot of detections.
 detParams.saveForTPWS = 1; % Save just enough data to build TPWS files. Should help
 % limit metadata size.

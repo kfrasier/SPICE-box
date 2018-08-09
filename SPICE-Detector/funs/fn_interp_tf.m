@@ -10,7 +10,5 @@ if ~isempty(p.tfFullFile)
 else
     % if you didn't provide a tf function, then just create a
     % vector of zeros of the right size.
-    p.countThresh = p.countThresh;
-    p.ppThresh = 20*log10(2*sqrt(p.countThresh));
     p.xfrOffset = zeros(size(p.xfr_f));
 end

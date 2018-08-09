@@ -14,7 +14,7 @@ if nargin == 1
     % Check if settings file was passed in function call
 	detParamsFile = varargin{1};	
     % If so, load it
-    fprintf('Loading settings file %s\n',detParamsFile)
+    fprintf('Loading settings file %s\n\n',detParamsFile)
     run(detParamsFile);
 else
     % If no settings file provided, prompt for input
@@ -23,11 +23,17 @@ else
     [settingsFileName,settingsFilePath , ~] = uigetfile(expectedSettingsDir);
     if ~isempty(settingsFileName)
         settingsFullFile = fullfile(settingsFilePath,settingsFileName);
-        fprintf('Loading settings file %s\n',settingsFullFile)
+        fprintf('Loading settings file %s\n\n',settingsFullFile)
         run(settingsFullFile);
+
     else 
         error('No settings file selected')
     end
+end
+
+if detParams.verbose
+    % display settings variables
+    disp(detParams)
 end
 
 if detParams.diary
@@ -38,36 +44,36 @@ detParams = dt_buildDirs(detParams);
 
 % Build list of (x)wav names in the base directory.
 % Right now only wav and xwav files are looked for.
-detFiles = fn_findXWAVs(detParams);
+fullFileNames = fn_findXWAVs(detParams);
 
 if detParams.guidedDetector && ~isempty(detParams.gDxls)
-    [detFiles,encounterTimes] = fn_guidedDetection(detFiles,detParams);
+    [fullFileNames,encounterTimes] = fn_guidedDetection(fullFileNames,detParams);
     fprintf('Using guided detections from file %s \n',detParams.gDxls')
 else 
     encounterTimes = [];
 end
 
 % return a list of files to be built
-[fullFiles,fullLabels] = fn_getFileset(detParams,detFiles); 
+fullLabels = fn_getFileset(detParams,fullFileNames); 
 
 % profile on
 % profile clear
-if ~isempty(detFiles)
+if ~isempty(fullFileNames)
     % Short time detector
     if detParams.lowResDet
         tic 
-        display('Beginning low-res detection')
-        dt_LR_batch(fullLabels,fullFiles,detParams); % run detector
-        display('Done with low-res detector')
+        fprintf('Beginning low-res detection\n\n')
+        dt_LR_batch(fullLabels,fullFileNames,detParams); % run detector
+        fprintf('Done with low-res detector\n\n')
         toc
     end
     
     % High res detector
     if detParams.highResDet
         tic
-        display('Beginning high-res detection')
-        dt_HR_batch(fullFiles,fullLabels,detParams,encounterTimes)
-        display('Done with high-res detector')
+        fprintf('Beginning high-res detection\n\n')
+        dt_HR_batch(fullFileNames,fullLabels,detParams,encounterTimes)
+        fprintf('Done with high-res detector\n\n')
         toc
     end
 else

@@ -15,8 +15,8 @@ cParams.yFiltVec = cell(1E5,1);
 cParams.yFiltBuffVec = cell(1E5,1);
 
 if p.saveNoise
-    cParams.yNFiltVec = cell(1E5,1);
-    cParams.specNoiseTfVec = nan(1E5,length(p.specRange));
+    cParams.yNFiltVec = [];
+    cParams.specNoiseTfVec = [];
 end
 
 f = [];
@@ -64,8 +64,11 @@ for k = 1:numStarts % stepping through using the start/end points
             cParams.nDurVec(sIdx:eIdx,1) = clickDets.nDur;
             
             if p.saveNoise
-                cParams.yNFiltVec(sIdx:eIdx,:) = clickDets.yNFilt';
-                cParams.specNoiseTfVec(sIdx:eIdx,:) = clickDets.specNoiseTf;
+                if ~isempty(clickDets.yNFilt{1})
+                    cParams.yNFiltVec = [cParams.yNFiltVec;clickDets.yNFilt];
+                    cParams.specNoiseTfVec = [cParams.specNoiseTfVec;...
+                        clickDets.specNoiseTf];
+                end
             end
             
             sIdx = eIdx+1;
@@ -87,8 +90,3 @@ cParams.peakFrVec = cParams.peakFrVec(1:eIdx,:);
 cParams.yFiltBuffVec = cParams.yFiltBuffVec(1:eIdx,:);
 cParams.deltaEnvVec = cParams.deltaEnvVec(1:eIdx,:);
 cParams.nDurVec = cParams.nDurVec(1:eIdx,:);
-
-if p.saveNoise
-    cParams.yNFiltVec = cParams.yNFiltVec(1:eIdx,:);
-	cParams.specNoiseTfVec = cParams.specNoiseTfVec(1:eIdx,:);
-end

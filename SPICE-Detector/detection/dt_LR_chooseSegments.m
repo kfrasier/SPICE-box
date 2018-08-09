@@ -8,7 +8,7 @@ function [startsSec,stopsSec,p] = dt_LR_chooseSegments(p,hdr)
 % Figure out how long the file is by summing up all the bytes
 starts = 0;
 stops = sum(hdr.xhd.byte_length)/hdr.xhd.ByteRate;
-p.fftSize = 2^ceil(log2(hdr.fs * p.frameLengthSec));
+p.fftSize = 2^ceil(log2(hdr.fs * p.frameLengthUs/1000));
 
 p.frameAdvanceSec = p.fftSize / hdr.fs; % this should now be used instead of 
 % p.frameLengthSec because it has more precision

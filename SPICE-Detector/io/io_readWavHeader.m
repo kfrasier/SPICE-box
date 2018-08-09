@@ -1,4 +1,4 @@
-function hdr = io_readWavHeader(Filename,PARAMS)
+function hdr = io_readWavHeader(Filename,DateRE)
 % hdr = io_readWavHeader(Filename, DateRE)
 %
 % Read header of Microsoft RIFF wav header
@@ -17,21 +17,14 @@ function hdr = io_readWavHeader(Filename,PARAMS)
 % $Id: ioReadWavHeader.m,v 1.6 2008/12/09 19:35:38 mroch Exp $
 
 
-% Use global timestamp if available
-if isfield(PARAMS, 'fnameTimeRegExp')
-    DateRE = PARAMS.fnameTimeRegExp;
-else
-    DateRE = [];
-end
-
 hdr.fType = 'wav';
 
-f_handle = ioOpenWav(Filename);
+f_handle = io_openWav(Filename);
 if f_handle == -1
   error('io:Unable to open file %s', Filename);
 end
 
-Riff = ioReadRIFFCkHdr(f_handle);
+Riff = io_readRIFFCkHdr(f_handle);
 if ~ strcmp(Riff.ID, 'RIFF')
     fclose(f_handle);
     error('io:%s is not a RIFF wave file', Filename);

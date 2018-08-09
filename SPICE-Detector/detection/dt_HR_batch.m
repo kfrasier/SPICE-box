@@ -1,7 +1,10 @@
 function dt_HR_batch(fullFiles,fullLabels,p,encounterTimes)
 
-N = length(fullFiles);
+N = size(fullFiles,1);
 previousFs = 0; % make sure we build filters on first pass
+
+% get file type list
+fTypes = io_getFileType(fullFiles);
 
 for idx1 = 1:N % for each data file
     fprintf('beginning file %d of %d \n',idx1,N)
@@ -12,19 +15,20 @@ for idx1 = 1:N % for each data file
     labelFile = fullLabels{idx1};
     
     % read file header
-    hdr = dt_getHRinput(recFile,p);
-    
+    hdr = io_readXWAVHeader(fullFiles{idx1}, p,'ftype', fTypes(idx1));
+
     if isempty(hdr)
         continue % skip if you couldn't read a header
     elseif hdr.fs ~= previousFs
         % otherwise, if this is the first time through, build your filters,
         % only need to do this once though, so if you already have this
         % info, this step is skipped
+        
         [previousFs,p] = fn_buildFilters(p,hdr.fs);
         
         p = fn_interp_tf(p);
         if ~exist('p.countThresh') || isempty(p.countThresh)
-            p.countThresh = (10^((p.dBppThreshold - min(p.xfrOffset))/20))*(1/2);
+            p.countThresh = (10^((p.dBppThreshold - median(p.xfrOffset))/20))/2;
         end
     end
     
@@ -61,9 +65,7 @@ for idx1 = 1:N % for each data file
     cParams.bw3dbVec = cParams.bw3dbVec(keepIdx,:);
     
     cParams.specClickTfVec = cParams.specClickTfVec(keepIdx,:);
-    if p.saveNoise
-        cParams.specNoiseTfVec = cParams.specNoiseTfVec(keepIdx,:);
-    end
+
     cParams.peakFrVec = cParams.peakFrVec(keepIdx,:);
     cParams.deltaEnvVec = cParams.deltaEnvVec(keepIdx,:);
     cParams.nDurVec = cParams.nDurVec(keepIdx,:);
@@ -71,13 +73,10 @@ for idx1 = 1:N % for each data file
     if ~isempty(keepIdx)
         cParams.yFiltVec = cParams.yFiltVec(keepIdx);
         cParams.yFiltBuffVec = cParams.yFiltBuffVec(keepIdx);
-        if p.saveNoise
-            cParams.yNFiltVec = cParams.yNFiltVec(keepIdx);
-        end
+
     else
         cParams.yFiltVec = {};
         cParams.yFiltBuffVec = {};
-        cParams.yNFiltVec = {};
     end
     
     fn_saveDets2mat(strrep(labelFile,'.c','.mat'),cParams,f,hdr,p);
