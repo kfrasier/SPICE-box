@@ -18,7 +18,7 @@ ftype = 2;
 vidx=1;
 while vidx <= length(varargin)
     switch varargin{vidx}
-        case 'ftype'
+        case 'fType'
             ftype = varargin{vidx+1};
             vidx=vidx+2;
         otherwise

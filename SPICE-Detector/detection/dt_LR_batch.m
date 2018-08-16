@@ -9,7 +9,7 @@ N = size(fullFiles,1);
 previousFs = 0; % make sure we build filters on first pass
 
 % get file type list
-fTypes = io_getFileType(detFiles);
+fTypes = io_getFileType(fullFiles);
 
 for idx = 1:N  % "parfor" works here, parallellizing the process across as
     % many cores as your machine has available.
@@ -47,7 +47,7 @@ for idx = 1:N  % "parfor" works here, parallellizing the process across as
         % keep it conservative for now by using the transfer function
         % maximum across the band of interest
         p = fn_interp_tf(p);
-        if ~exist('p.countThresh') || isempty(p.countThresh)
+        if ~isfield(p,'countThresh') || isempty(p.countThresh)
             p.countThresh = (10^((p.dBppThreshold - median(p.xfrOffset))/20))/2;
         end
     end
@@ -62,7 +62,7 @@ for idx = 1:N  % "parfor" works here, parallellizing the process across as
         stopK = stopsSec(k);
         
         % Read in data segment
-        if strncmp(fType,'.wav',4)
+        if strncmp(hdr.fType,'wav',3)
             data = io_readWav(fid, hdr, startK, stopK, 'Units', 's',...
                 'Channels', p.channel, 'Normalize', 'unscaled')';
         else
