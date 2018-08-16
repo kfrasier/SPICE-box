@@ -15,7 +15,7 @@ for idx1 = 1:N % for each data file
     labelFile = fullLabels{idx1};
     
     % read file header
-    hdr = io_readXWAVHeader(fullFiles{idx1}, p,'ftype', fTypes(idx1));
+    hdr = io_readXWAVHeader(fullFiles{idx1}, p,'fType', fTypes(idx1));
 
     if isempty(hdr)
         continue % skip if you couldn't read a header
