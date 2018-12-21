@@ -7,21 +7,21 @@ detParams.lowResDet = false; % run low resolution detector.
 detParams.highResDet = true; % run high resolution detector.
 
 % Location of base directory containing directories of files to be analyzed
-detParams.baseDir = 'F:\';
+detParams.baseDir = 'H:\';
 
 % Optional output directory location. Metadata directory will be created in 
 % outDir if specified, otherwise it will be created in baseDir.
-detParams.outDir  = 'E:\test'; 
+detParams.outDir  = 'D:\CANARC_PI_02'; 
 
 % Set transfer function location
-detParams.tfFullFile = 'E:\Code\TFs\683_120919\683_120919_HARP.tf';
+detParams.tfFullFile = 'E:\Code\TFs\720_130730\720_130730_HARP.tf';
 % Note, if no transfer function use: parametersLR.tfFullFile = [];
 
 % Name of the deployment. This should be the first few characters in the 
 % directory(ies) you want to look in you want to look at. For now, 
 % directory hierarchy is expected to be: basedir>depl*>*.x.wav
 % TODO: implement recursive directory search for more flexibility.
-detParams.depl = 'GofMX_DC08';
+detParams.depl = 'CANARC_PI_02';
 
 detParams.channel = 1; % which channel do you want to look at?
 detParams.bpRanges = [5000 100000]; % Bandpass filter parameters in Hz [min,max]
@@ -32,7 +32,8 @@ detParams.overlap = 0.50; % fft overlap
 detParams.clipThreshold = 0.98;%  Normalized clipping threshold btwn 0 and 1.  If empty, 
 % assumes no clipping. 
 
-detParams.REWavExt = '(\.x)?\.wav';%  expression to match .wav or .x.wav
+
+detParams.REWavExt = '(\.x)?\.wav';% Only used for array. Expression to match .wav or .x.wav
 % If you are using wav files that have a time stamp in the name, put a
 % regular expression for extracting that here:
 detParams.DateRegExp = '_(\d*)_(\d*)';
@@ -92,13 +93,19 @@ detParams.energyPrctile = 70; % sets the threshold at which click start
 %%% POST PROCESSING FLAGS %%%%%%%%
 detParams.rmLonerClicks = false;
 detParams.rmEchos = false;
-detParams.lockOut = 0.01; % min gap between clicks in seconds, only used if rmEchos=TRUE
+detParams.lockOut = 0.0001; % min gap between clicks in seconds, only used if rmEchos=TRUE
 
 %%% Saving options %%%
-detParams.saveNoise = 0; % Make 1 if you want to save noise samples with each click. 
+detParams.saveNoise = 1; % Make 1 if you want to save noise samples with each click. 
 % Beware: this can make big files if you have a lot of detections.
 detParams.saveForTPWS = 1; % Save just enough data to build TPWS files. Should help
 % limit metadata size.
+
+detParams.overwrite = false; % overwrite any existing detection files? 
+% Useful in case of a crash.
+
+% Control amount of messaging displayed in console.
+detParams.verbose = true;
 
 %%% Output file extensions. Probably don't need to be changed %%%
 detParams.ppExt = 'cHR';

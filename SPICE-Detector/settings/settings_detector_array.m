@@ -7,8 +7,8 @@ detParams.lowResDet = false; % run low resolution detector.
 detParams.highResDet = true; % run high resolution detector.
 
 % Control amount of messaging displayed in console.
-
 detParams.verbose = true;
+
 % Location of base directory containing directories of files to be analyzed
 detParams.baseDir = 'H:\Clymenedolphin\Recording_system_1_High_Frequency\Recordings\Oil_End_Array_HP2_HP4_HIGH_FREQ';
 
@@ -100,6 +100,8 @@ detParams.saveNoise = 1; % Make 1 if you want to save noise samples with each cl
 % Beware: this can make big files if you have a lot of detections.
 detParams.saveForTPWS = 1; % Save just enough data to build TPWS files. Should help
 % limit metadata size.
+detParams.overwrite = false; % overwrite any existing detection files? 
+% Useful in case of a crash.
 
 %%% Output file extensions. Probably don't need to be changed %%%
 detParams.ppExt = 'cHR';
