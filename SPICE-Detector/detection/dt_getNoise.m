@@ -7,7 +7,7 @@ candidatesRelwEnds = [1,candidatesRel,dataLen];
 dCR = diff(candidatesRelwEnds);
 [mC,mI] = max(dCR);
 % look for a stretch of data that has no detections
-if dataLen-mC > 1.5*maxClickSamples
+if dataLen - (candidatesRelwEnds(mI)+maxClickSamples/2) > maxClickSamples
     noiseStart = candidatesRelwEnds(mI)+maxClickSamples/2;
     noiseTimes = [noiseStart, noiseStart+maxClickSamples];
 end
