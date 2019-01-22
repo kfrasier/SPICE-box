@@ -14,7 +14,7 @@ function y = io_readWav(Handle, hdr, start, stop, varargin)
 % 'Units', str - Interpretation of start and stop:
 %       'samples' (default) - first sample is sample 1
 %       's' - seconds
-% 'Normalise', 
+% 'Normalize', 
 %       'scale' (default) - Normalize across dynamic range to [-1, 1].
 %               This is what Matlab does with wavread
 %       'unscaled' - Return values as stored in wav file.
@@ -27,7 +27,7 @@ function y = io_readWav(Handle, hdr, start, stop, varargin)
 % defaults
 channels = 1:hdr.nch;
 units = 'samples';
-Conversion = 'scale';  % wavread default scaling [-1, 1]
+Conversion = 'unscaled';  % kfChanged - don't want auto scaling % wavread default scaling [-1, 1]
 
 k = 1;
 while k < length(varargin)
